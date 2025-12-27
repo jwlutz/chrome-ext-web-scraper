@@ -107,6 +107,11 @@ function showModal(): void {
     modalHost.style.display = 'block';
     isModalVisible = true;
     console.log('[Yoink] Modal shown');
+
+    // Auto-detect on first open
+    if (detectedPatterns.length === 0) {
+      runDetection();
+    }
   }
 }
 
