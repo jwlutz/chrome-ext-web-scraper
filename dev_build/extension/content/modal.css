@@ -154,6 +154,15 @@
   background: #5254cc;
 }
 
+.yoink-btn-warning {
+  background: #eab308;
+  color: #000;
+}
+
+.yoink-btn-warning:hover:not(:disabled) {
+  background: #ca9a07;
+}
+
 /* Checkbox */
 .yoink-checkbox {
   display: flex;

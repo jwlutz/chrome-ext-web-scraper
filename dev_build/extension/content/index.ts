@@ -9,6 +9,7 @@ import modalCSS from './modal.css?raw';
 import { detectPatterns, getElementsByPattern, cyclePattern } from '../../core/detector';
 import { extractFromElements } from '../../core/extractor';
 import { buildTable } from '../../core/table-builder';
+import { enableSelectionMode, findSimilarElements, generateSelector } from '../../core/selector';
 import type { DetectedPattern, DataTable } from '../../core/types';
 
 console.log('[Yoink] Content script loaded:', location.href);
@@ -26,6 +27,10 @@ let detectedPatterns: DetectedPattern[] = [];
 let currentPatternIndex = 0;
 let currentTable: DataTable | null = null;
 let highlightedElements: Element[] = [];
+
+// Manual selection state
+let isSelecting = false;
+let selectionCleanup: (() => void) | null = null;
 
 // Inject highlight styles into the page (not shadow DOM)
 const HIGHLIGHT_STYLE_ID = 'yoink-highlight-styles';
@@ -347,5 +352,154 @@ function wireUpButtons(): void {
     tryAnotherBtn.addEventListener('click', () => {
       tryAnotherTable();
     });
+  }
+
+  // Manual Select button
+  const manualSelectBtn = shadowRoot.querySelector('#btn-manual-select');
+  if (manualSelectBtn) {
+    manualSelectBtn.addEventListener('click', () => {
+      toggleManualSelection();
+    });
+  }
+}
+
+// ============================================================================
+// MANUAL SELECTION MODE
+// ============================================================================
+
+/**
+ * Toggle manual selection mode.
+ */
+function toggleManualSelection(): void {
+  if (isSelecting) {
+    stopManualSelection();
+  } else {
+    startManualSelection();
+  }
+}
+
+/**
+ * Enter manual selection mode.
+ */
+function startManualSelection(): void {
+  if (isSelecting) return;
+
+  console.log('[Yoink] Entering manual selection mode');
+  isSelecting = true;
+
+  // Update button state
+  updateManualSelectButton(true);
+
+  // Clear previous highlights
+  clearHighlights();
+
+  // Hide modal temporarily to allow selection
+  if (modalHost) {
+    modalHost.style.opacity = '0.3';
+    modalHost.style.pointerEvents = 'none';
+  }
+
+  // Enable selection mode
+  selectionCleanup = enableSelectionMode(
+    document.body,
+    // On select
+    (element) => {
+      console.log('[Yoink] Element selected:', element.tagName);
+      handleElementSelected(element);
+    },
+    // On hover
+    (element) => {
+      // Could show preview info in modal, but keeping it simple for now
+    }
+  );
+}
+
+/**
+ * Exit manual selection mode.
+ */
+function stopManualSelection(): void {
+  if (!isSelecting) return;
+
+  console.log('[Yoink] Exiting manual selection mode');
+  isSelecting = false;
+
+  // Clean up selection mode
+  if (selectionCleanup) {
+    selectionCleanup();
+    selectionCleanup = null;
+  }
+
+  // Restore modal
+  if (modalHost) {
+    modalHost.style.opacity = '1';
+    modalHost.style.pointerEvents = 'auto';
+  }
+
+  // Update button state
+  updateManualSelectButton(false);
+}
+
+/**
+ * Handle when user selects an element.
+ */
+function handleElementSelected(element: Element): void {
+  // Exit selection mode
+  stopManualSelection();
+
+  // Find similar elements
+  const similarElements = findSimilarElements(document.body, element);
+  console.log('[Yoink] Found', similarElements.length, 'similar elements');
+
+  if (similarElements.length === 0) {
+    showEmptyState('No similar elements found');
+    return;
+  }
+
+  // Generate a selector for this pattern
+  const selector = generateSelector(element);
+
+  // Create a manual pattern
+  const manualPattern: DetectedPattern = {
+    id: `manual-${Date.now()}`,
+    selector,
+    count: similarElements.length,
+    sampleText: similarElements.slice(0, 3).map(el => {
+      const text = el.textContent?.trim() || '';
+      return text.length > 50 ? text.slice(0, 50) + '...' : text;
+    }),
+    confidence: 1.0, // Manual selection = highest confidence
+  };
+
+  // Add to patterns (at the beginning)
+  detectedPatterns = [manualPattern, ...detectedPatterns];
+  currentPatternIndex = 0;
+
+  // Highlight and extract
+  highlightElements(similarElements);
+
+  const rows = extractFromElements(similarElements);
+  currentTable = buildTable(rows, location.href);
+  console.log('[Yoink] Built table from manual selection:', currentTable.columns.length, 'columns,', currentTable.totalRows, 'rows');
+
+  renderTable();
+}
+
+/**
+ * Update the Manual Select button appearance.
+ */
+function updateManualSelectButton(selecting: boolean): void {
+  if (!shadowRoot) return;
+
+  const btn = shadowRoot.querySelector('#btn-manual-select') as HTMLButtonElement;
+  if (!btn) return;
+
+  if (selecting) {
+    btn.textContent = 'Selecting...';
+    btn.classList.remove('yoink-btn-primary');
+    btn.classList.add('yoink-btn-warning');
+  } else {
+    btn.textContent = 'Manual Select';
+    btn.classList.remove('yoink-btn-warning');
+    btn.classList.add('yoink-btn-primary');
   }
 }
