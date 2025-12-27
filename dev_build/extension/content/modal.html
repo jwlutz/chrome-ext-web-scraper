@@ -1,0 +1,64 @@
+<div class="yoink-modal">
+  <header class="yoink-header">
+    <button class="yoink-close" title="Close">&times;</button>
+    <span class="yoink-title">YOINK.AI</span>
+  </header>
+
+  <main class="yoink-body">
+    <!-- Controls Section -->
+    <section class="yoink-controls">
+      <div class="yoink-control-grid">
+        <div class="yoink-left-controls">
+          <div class="yoink-control-row">
+            <button class="yoink-btn yoink-btn-primary" disabled>Try Another Table</button>
+            <button class="yoink-btn yoink-btn-primary" disabled>Manual Select</button>
+          </div>
+          <div class="yoink-control-row">
+            <button class="yoink-btn yoink-btn-secondary" disabled>Locate Next Button</button>
+            <button class="yoink-btn yoink-btn-primary" disabled>Start Crawling</button>
+          </div>
+          <label class="yoink-checkbox">
+            <input type="checkbox" disabled />
+            <span>Infinite Scroll</span>
+          </label>
+          <div class="yoink-delay-inputs">
+            <div class="yoink-delay-row">
+              <span>Min Delay</span>
+              <input type="number" value="1" min="0" disabled />
+              <span>sec</span>
+            </div>
+            <div class="yoink-delay-row">
+              <span>Max Delay</span>
+              <input type="number" value="20" min="0" disabled />
+              <span>sec</span>
+            </div>
+          </div>
+        </div>
+        <div class="yoink-export-buttons">
+          <button class="yoink-btn yoink-btn-export" disabled>CSV</button>
+          <button class="yoink-btn yoink-btn-export" disabled>XLSX</button>
+          <button class="yoink-btn yoink-btn-export" disabled>JSON</button>
+          <button class="yoink-btn yoink-btn-export" disabled>COPY ALL</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Action Row -->
+    <section class="yoink-action-row">
+      <button class="yoink-btn yoink-btn-ai" disabled>✨ CLEAN WITH AI</button>
+      <button class="yoink-btn yoink-btn-export" disabled>📄 Download Full Page HTML</button>
+    </section>
+
+    <!-- Data Table -->
+    <section class="yoink-table-container">
+      <div class="yoink-empty-state">
+        Click 'Try Another Table' or 'Manual Select' to begin
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="yoink-footer">
+      <span class="yoink-row-count">No data loaded</span>
+    </footer>
+  </main>
+</div>

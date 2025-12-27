@@ -33,15 +33,13 @@ yoink/
 │   │   └── types.ts           # Shared TypeScript types
 │   │
 │   ├── extension/             # Chrome extension wrapper
-│   │   ├── manifest.json      # MV3 manifest
+│   │   ├── manifest.json      # MV3 manifest (NO default_popup)
 │   │   ├── background/
-│   │   │   └── index.ts       # Service worker, message routing
-│   │   ├── content/
-│   │   │   └── index.ts       # Thin wrapper, imports core
-│   │   └── popup/
-│   │       ├── popup.html     # UI structure
-│   │       ├── popup.css      # Styling
-│   │       └── popup.ts       # UI logic
+│   │   │   └── index.ts       # Service worker, message routing, icon click
+│   │   └── content/
+│   │       ├── index.ts       # Message handling + modal injection
+│   │       ├── modal.html     # Modal HTML structure
+│   │       └── modal.css      # Modal styles (injected into Shadow DOM)
 │   │
 │   ├── dist/                  # Build output (gitignored)
 │   ├── vite.config.ts         # Build configuration
@@ -56,13 +54,73 @@ yoink/
 
 1. **`dev_build/core/` must have ZERO `chrome.*` references.** Run `grep -r "chrome\." dev_build/core/` — it must return nothing.
 
-2. **`dev_build/extension/content/index.ts` must be thin.** It only:
+2. **`dev_build/extension/content/index.ts` responsibilities:**
    - Imports from `core/`
-   - Listens for messages
+   - Listens for messages from background
+   - Creates and manages the modal (in Shadow DOM)
    - Calls core functions
    - Sends responses
 
-3. **Old `src/` directory is READ-ONLY reference.** Copy logic patterns, not architecture.
+3. **NO popup directory.** The UI is an in-page modal, not a browser popup.
+
+4. **Old `src/` directory is READ-ONLY reference.** Copy logic patterns, not architecture.
+
+---
+
+## Modal Architecture
+
+The UI is **NOT a browser popup** (`default_popup`). It is an **in-page modal** injected by the content script.
+
+### Why a Modal Instead of Popup?
+- Modal stays open while user interacts with the page
+- Modal can show real-time updates as elements are selected
+- Modal doesn't close when clicking outside (popups do)
+- Better UX for a tool that needs to interact with page content
+
+### How It Works
+
+1. **Extension icon click** → background receives `chrome.action.onClicked`
+2. **Background sends** `TOGGLE_MODAL` message to content script
+3. **Content script** creates/shows/hides the modal
+
+### Shadow DOM Isolation
+
+The modal is injected into a **Shadow DOM** to prevent page styles from breaking it:
+
+```typescript
+// content/index.ts
+const host = document.createElement('div');
+host.id = 'yoink-modal-host';
+const shadow = host.attachShadow({ mode: 'closed' });
+
+// Inject modal HTML and CSS into shadow root
+shadow.innerHTML = `
+  <style>${modalCSS}</style>
+  ${modalHTML}
+`;
+
+document.body.appendChild(host);
+```
+
+Benefits:
+- Page CSS cannot affect modal styles
+- Modal CSS cannot leak into page
+- Clean encapsulation
+
+### Modal Behavior
+
+| Action | Result |
+|--------|--------|
+| Click extension icon | Modal appears (or hides if already open) |
+| Click X button | Modal hides |
+| Page scroll | Modal stays visible (fixed position) |
+| Page navigation | Modal closes (content script dies) |
+
+### Modal Positioning
+
+- **Position:** Fixed, bottom-right corner of viewport
+- **Size:** ~450px wide, auto height (max ~600px with scrollable table)
+- **Z-index:** Very high (999999) to stay above page content
 
 ---
 
@@ -70,44 +128,42 @@ yoink/
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                                                             │
-│   LEFT COLUMN                    RIGHT COLUMN               │
-│   ┌──────────┬──────────┐       ┌────────────────────┐     │
-│   │Try Another│  Manual  │       │        CSV         │     │
-│   │  Table   │  Select  │       ├────────────────────┤     │
-│   ├──────────┼──────────┤       │       XLSX         │     │
-│   │ Locate   │  Start   │       ├────────────────────┤     │
-│   │Next Btn  │ Crawling │       │       JSON         │     │
-│   └──────────┴──────────┘       ├────────────────────┤     │
-│                                  │     COPY ALL       │     │
-│   ☐ Infinite Scroll              └────────────────────┘     │
-│                                                             │
-│   ┌────────────────────────────┐                           │
-│   │ Min Delay  [ 1   ] sec     │                           │
-│   │ Max Delay  [ 20  ] sec     │                           │
-│   └────────────────────────────┘                           │
-│                                                             │
+│  [X]                                               YOINK.AI │
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
-│   ┌─────────────────────┬───────────────────────────────┐  │
-│   │   ✨ CLEAN WITH AI  │   📄 Download Full Page HTML  │  │
-│   └─────────────────────┴───────────────────────────────┘  │
+│  ┌────────────────┬───────────────┐  ┌──────────────────┐  │
+│  │ Try Another    │    Manual     │  │       CSV        │  │
+│  │    Table       │    Select     │  ├──────────────────┤  │
+│  ├────────────────┼───────────────┤  │      XLSX        │  │
+│  │ Locate Next    │    Start      │  ├──────────────────┤  │
+│  │   Button       │   Crawling    │  │      JSON        │  │
+│  └────────────────┴───────────────┘  ├──────────────────┤  │
+│                                      │    COPY ALL      │  │
+│  ☐ Infinite Scroll                   └──────────────────┘  │
+│                                                             │
+│  ┌──────────────────────┐                                  │
+│  │ Min Delay [ 1  ] sec │                                  │
+│  ├──────────────────────┤                                  │
+│  │ Max Delay [ 20 ] sec │                                  │
+│  └──────────────────────┘                                  │
 │                                                             │
 ├─────────────────────────────────────────────────────────────┤
+│  ┌─────────────────────────┬───────────────────────────┐   │
+│  │    ✨ CLEAN WITH AI     │  📄 Download Full Page    │   │
+│  │        (purple)         │       HTML (green)        │   │
+│  └─────────────────────────┴───────────────────────────┘   │
+├─────────────────────────────────────────────────────────────┤
+│  ┌──────────────┬──────────────┬──────────────┬────────┐   │
+│  │ editable     │ editable     │ editable     │  ...   │   │
+│  │ column 1     │ column 2     │ column 3     │        │   │
+│  ├──────────────┼──────────────┼──────────────┼────────┤   │
+│  │ content      │ content      │ content      │        │   │
+│  │ content      │ content      │ content      │        │   │
+│  │ content      │ content      │ content      │        │   │
+│  │ (scrollable) │              │              │        │   │
+│  └──────────────┴──────────────┴──────────────┴────────┘   │
 │                                                             │
-│   ┌─────────────────┬─────────────────┬─────────────────┐  │
-│   │ editable col 1  │ editable col 2  │ editable col 3  │  │  ← Click to rename
-│   ├─────────────────┼─────────────────┼─────────────────┤  │
-│   │ row 1 data      │ row 1 data      │ row 1 data      │  │
-│   ├─────────────────┼─────────────────┼─────────────────┤  │
-│   │ row 2 data      │ row 2 data      │ row 2 data      │  │
-│   ├─────────────────┼─────────────────┼─────────────────┤  │
-│   │ row 3 data      │ row 3 data      │ row 3 data      │  │
-│   ├─────────────────┼─────────────────┼─────────────────┤  │
-│   │ ...scrollable...│                 │                 │  │
-│   └─────────────────┴─────────────────┴─────────────────┘  │
-│                                                             │
-│   Found 24 rows × 3 columns                                │
+│  Found 24 rows × 3 columns                                 │
 │                                                             │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -296,14 +352,11 @@ export function capturePageHTML(): string;
 
 ## Message Protocol
 
-### Content Script ↔ Background
+### Background ↔ Content Script
 
 ```typescript
-// Content → Background
-{ type: 'CONTENT_READY', payload: { url: string } }
-{ type: 'ELEMENT_SELECTED', payload: { selector: string, count: number } }
-
-// Background → Content
+// Background → Content (triggered by extension icon click)
+{ type: 'TOGGLE_MODAL' }
 { type: 'PING' }
 { type: 'DETECT_PATTERNS' }
 { type: 'SELECT_PATTERN', payload: { selector: string } }
@@ -313,16 +366,12 @@ export function capturePageHTML(): string;
 { type: 'FIND_NEXT_BUTTON' }
 { type: 'CLICK_NEXT_BUTTON' }
 { type: 'HIGHLIGHT_ELEMENTS', payload: { selector: string } }
-```
 
-### Popup ↔ Background
-
-```typescript
-// Popup → Background
+// Content → Background
+{ type: 'CONTENT_READY', payload: { url: string } }
+{ type: 'ELEMENT_SELECTED', payload: { selector: string, count: number } }
 { type: 'GET_STATE' }
 { type: 'TRY_ANOTHER_TABLE' }
-{ type: 'START_MANUAL_SELECT' }
-{ type: 'STOP_MANUAL_SELECT' }
 { type: 'LOCATE_NEXT_BUTTON' }
 { type: 'START_CRAWL', payload: { minDelay: number, maxDelay: number, infiniteScroll: boolean } }
 { type: 'STOP_CRAWL' }
@@ -330,9 +379,11 @@ export function capturePageHTML(): string;
 { type: 'EXPORT', payload: { format: 'csv' | 'xlsx' | 'json' | 'clipboard' | 'html' } }
 { type: 'AI_CLEAN' }
 
-// Background → Popup (via state updates)
+// Background → Content (state updates)
 { type: 'STATE_UPDATE', payload: AppState }
 ```
+
+**Note:** All UI actions (button clicks, exports, etc.) now originate from the modal in the content script, not a popup.
 
 ### App State (Background)
 
@@ -373,50 +424,133 @@ interface AppState {
 
 ### Phase 1: Foundation (Must complete first)
 
-**Goal:** Extension loads, content script runs, popup shows connection status.
+**Goal:** Extension loads, content script runs, modal can be toggled via extension icon.
 
 - [ ] Create `dev_build/` directory structure
-- [ ] Write `manifest.json` (MV3)
+- [ ] Write `manifest.json` (MV3, **NO** `default_popup`):
+  ```json
+  {
+    "manifest_version": 3,
+    "name": "Yoink.ai",
+    "version": "0.1.0",
+    "action": {
+      "default_title": "Yoink.ai",
+      "default_icon": { "16": "icons/icon16.png", "48": "icons/icon48.png", "128": "icons/icon128.png" }
+    },
+    "background": {
+      "service_worker": "background/index.js",
+      "type": "module"
+    },
+    "content_scripts": [{
+      "matches": ["<all_urls>"],
+      "js": ["content/index.js"]
+    }],
+    "permissions": ["activeTab", "storage"]
+  }
+  ```
+- [ ] Create `core/types.ts` with shared TypeScript types (ZERO `chrome.*` references)
+- [ ] Minimal `background/index.ts`:
+  ```typescript
+  // Listen for extension icon click
+  chrome.action.onClicked.addListener((tab) => {
+    if (tab.id) {
+      chrome.tabs.sendMessage(tab.id, { type: 'TOGGLE_MODAL' });
+    }
+  });
+
+  // Track content script ready state per tab
+  const tabStates = new Map<number, { ready: boolean; url: string }>();
+
+  chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+    if (msg.type === 'CONTENT_READY' && sender.tab?.id) {
+      tabStates.set(sender.tab.id, { ready: true, url: msg.payload.url });
+    }
+    if (msg.type === 'GET_STATE' && sender.tab?.id) {
+      sendResponse({ ready: tabStates.get(sender.tab.id)?.ready ?? false });
+    }
+    return true;
+  });
+  ```
 - [ ] Minimal `content/index.ts`:
   ```typescript
   console.log('[Yoink] Content script loaded:', location.href);
   chrome.runtime.sendMessage({ type: 'CONTENT_READY', payload: { url: location.href } });
+
+  // Modal state
+  let modalHost: HTMLElement | null = null;
+  let isModalVisible = false;
+
+  // Create modal in Shadow DOM
+  function createModal() {
+    modalHost = document.createElement('div');
+    modalHost.id = 'yoink-modal-host';
+    const shadow = modalHost.attachShadow({ mode: 'closed' });
+
+    // Inject styles and HTML (imported from modal.css and modal.html)
+    shadow.innerHTML = `<style>${modalCSS}</style>${modalHTML}`;
+
+    // Wire up close button
+    shadow.querySelector('.yoink-close')?.addEventListener('click', hideModal);
+
+    document.body.appendChild(modalHost);
+  }
+
+  function showModal() {
+    if (!modalHost) createModal();
+    modalHost!.style.display = 'block';
+    isModalVisible = true;
+  }
+
+  function hideModal() {
+    if (modalHost) modalHost.style.display = 'none';
+    isModalVisible = false;
+  }
+
+  function toggleModal() {
+    isModalVisible ? hideModal() : showModal();
+  }
+
+  // Listen for messages
   chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     if (msg.type === 'PING') sendResponse({ success: true });
+    if (msg.type === 'TOGGLE_MODAL') toggleModal();
     return true;
   });
   ```
-- [ ] Minimal `background/index.ts`:
-  - Track content script ready state per tab
-  - Respond to GET_STATE from popup
-- [ ] Minimal `popup/`:
-  - Shows "Connected" or "Content script not loaded"
-  - Basic layout shell (no functionality yet)
+- [ ] Create `content/modal.html` — Modal HTML structure (basic layout shell)
+- [ ] Create `content/modal.css` — Modal styles (will be injected into Shadow DOM)
+- [ ] Create placeholder icons (`icons/icon16.png`, `icon48.png`, `icon128.png`)
 - [ ] `vite.config.ts` that builds extension to `dist/`
 - [ ] Load in Chrome, verify no errors
 
 **Verification:**
 ```bash
-# Must see log in page console:
+# 1. Must see log in page console:
 [Yoink] Content script loaded: https://...
 
-# Popup must show "Connected" status
+# 2. Click extension icon → modal appears
+# 3. Click extension icon again → modal hides
+# 4. Click X button in modal → modal hides
+
+# 5. No chrome.* in core/
+grep -r "chrome\." dev_build/core/
+# Expected: no results
 ```
 
 ### Phase 2: Core Detection & Extraction
 
-**Goal:** "Try Another Table" works, data appears in popup.
+**Goal:** "Try Another Table" works, data appears in modal.
 
 - [ ] Implement `core/detector.ts`
 - [ ] Implement `core/extractor.ts`
 - [ ] Implement `core/table-builder.ts`
 - [ ] Wire up content script to use core functions
-- [ ] Popup: "Try Another Table" sends message, receives patterns
-- [ ] Popup: Table renders with data
+- [ ] Modal: "Try Another Table" button triggers detection
+- [ ] Modal: Table renders with data
 - [ ] Test on amazon.com product listing
 
 **Verification:**
-- Click extension on Amazon
+- Click extension icon on Amazon → modal appears
 - Click "Try Another Table" a few times
 - See different patterns detected
 - Table shows real data
@@ -461,7 +595,7 @@ interface AppState {
 - [ ] Respects min/max delay
 - [ ] "Stop Crawling" halts process
 - [ ] Infinite scroll option works
-- [ ] Progress shows in popup
+- [ ] Progress shows in modal
 
 ### Phase 7: AI Cleanup
 
@@ -537,4 +671,5 @@ Start by creating the directory structure and manifest.json. Show me the manifes
 
 ## Changelog
 
+- v1.1 — Changed from popup to in-page modal (Shadow DOM), updated UI layout to match wireframe exactly
 - v1.0 — Initial spec based on wireframe

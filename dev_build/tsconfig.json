@@ -14,6 +14,7 @@
     "types": ["chrome"]
   },
   "include": [
+    "vite-env.d.ts",
     "core/**/*.ts",
     "extension/**/*.ts"
   ],

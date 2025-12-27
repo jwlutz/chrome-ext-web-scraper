@@ -10,29 +10,16 @@ function copyExtensionAssets() {
       const distDir = resolve(__dirname, 'dist');
       const extDir = resolve(__dirname, 'extension');
 
-      // Ensure directories exist
-      const dirs = ['popup', 'icons'];
-      dirs.forEach(dir => {
-        const targetDir = resolve(distDir, dir);
-        if (!existsSync(targetDir)) {
-          mkdirSync(targetDir, { recursive: true });
-        }
-      });
+      // Ensure icons directory exists
+      const iconsDir = resolve(distDir, 'icons');
+      if (!existsSync(iconsDir)) {
+        mkdirSync(iconsDir, { recursive: true });
+      }
 
       // Copy manifest.json
       copyFileSync(
         resolve(extDir, 'manifest.json'),
         resolve(distDir, 'manifest.json')
-      );
-
-      // Copy popup HTML and CSS
-      copyFileSync(
-        resolve(extDir, 'popup/popup.html'),
-        resolve(distDir, 'popup/popup.html')
-      );
-      copyFileSync(
-        resolve(extDir, 'popup/popup.css'),
-        resolve(distDir, 'popup/popup.css')
       );
 
       // Copy icons
@@ -57,19 +44,16 @@ export default defineConfig({
       input: {
         content: resolve(__dirname, 'extension/content/index.ts'),
         background: resolve(__dirname, 'extension/background/index.ts'),
-        popup: resolve(__dirname, 'extension/popup/popup.ts'),
       },
       output: {
         entryFileNames: (chunkInfo) => {
           // Put each entry in its own directory
           if (chunkInfo.name === 'content') return 'content/index.js';
           if (chunkInfo.name === 'background') return 'background/index.js';
-          if (chunkInfo.name === 'popup') return 'popup/popup.js';
           return '[name].js';
         },
         chunkFileNames: 'chunks/[name]-[hash].js',
         assetFileNames: 'assets/[name]-[hash][extname]',
-        // Chrome extensions need IIFE format for content scripts
         format: 'es',
       },
     },

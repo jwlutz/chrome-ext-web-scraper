@@ -5,14 +5,9 @@
   "description": "Extract structured data from any webpage into spreadsheets",
   "permissions": [
     "activeTab",
-    "storage",
-    "clipboardWrite"
-  ],
-  "host_permissions": [
-    "<all_urls>"
+    "storage"
   ],
   "action": {
-    "default_popup": "popup/popup.html",
     "default_title": "Yoink.ai",
     "default_icon": {
       "16": "icons/icon16.png",
