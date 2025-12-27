@@ -245,3 +245,60 @@
   color: #6b7280;
   font-size: 12px;
 }
+
+/* Data Table */
+.yoink-data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+
+.yoink-data-table th,
+.yoink-data-table td {
+  padding: 6px 8px;
+  text-align: left;
+  border-bottom: 1px solid #3a3a5a;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.yoink-data-table th {
+  background: #1a1a2e;
+  color: #a0a0c0;
+  font-weight: 600;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.yoink-data-table tr:hover td {
+  background: #3a3a5a;
+}
+
+.yoink-data-table a {
+  color: #60a5fa;
+  text-decoration: none;
+}
+
+.yoink-data-table a:hover {
+  text-decoration: underline;
+}
+
+.yoink-null {
+  color: #4a4a6a;
+  font-style: italic;
+}
+
+.yoink-price {
+  color: #22c55e;
+  font-weight: 500;
+}
+
+.yoink-thumb {
+  max-width: 40px;
+  max-height: 40px;
+  border-radius: 2px;
+  vertical-align: middle;
+}
