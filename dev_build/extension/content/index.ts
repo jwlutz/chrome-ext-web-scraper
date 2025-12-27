@@ -25,6 +25,52 @@ let isModalVisible = false;
 let detectedPatterns: DetectedPattern[] = [];
 let currentPatternIndex = 0;
 let currentTable: DataTable | null = null;
+let highlightedElements: Element[] = [];
+
+// Inject highlight styles into the page (not shadow DOM)
+const HIGHLIGHT_STYLE_ID = 'yoink-highlight-styles';
+function ensureHighlightStyles(): void {
+  if (document.getElementById(HIGHLIGHT_STYLE_ID)) return;
+
+  const style = document.createElement('style');
+  style.id = HIGHLIGHT_STYLE_ID;
+  style.textContent = `
+    .yoink-highlighted {
+      outline: 2px solid #22c55e !important;
+      outline-offset: 2px !important;
+      background-color: rgba(34, 197, 94, 0.1) !important;
+      transition: outline 0.2s, background-color 0.2s !important;
+    }
+  `;
+  document.head.appendChild(style);
+}
+
+/**
+ * Highlight elements on the page.
+ */
+function highlightElements(elements: Element[]): void {
+  // Clear previous highlights
+  clearHighlights();
+
+  // Ensure styles are injected
+  ensureHighlightStyles();
+
+  // Add highlight class to new elements
+  for (const el of elements) {
+    el.classList.add('yoink-highlighted');
+    highlightedElements.push(el);
+  }
+}
+
+/**
+ * Clear all highlights from the page.
+ */
+function clearHighlights(): void {
+  for (const el of highlightedElements) {
+    el.classList.remove('yoink-highlighted');
+  }
+  highlightedElements = [];
+}
 
 // Create modal in Shadow DOM (closed mode for style isolation)
 function createModal(): void {
@@ -68,6 +114,7 @@ function hideModal(): void {
   if (modalHost) {
     modalHost.style.display = 'none';
     isModalVisible = false;
+    clearHighlights();
     console.log('[Yoink] Modal hidden');
   }
 }
@@ -154,6 +201,9 @@ function extractAndRender(): void {
     showEmptyState('No elements match the selected pattern');
     return;
   }
+
+  // Highlight matched elements on the page
+  highlightElements(elements);
 
   // Extract data from elements
   const rows = extractFromElements(elements);
