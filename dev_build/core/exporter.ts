@@ -6,6 +6,7 @@
  */
 
 import type { DataTable } from './types';
+import * as XLSX from 'xlsx';
 
 // ============================================================================
 // CSV EXPORT
@@ -117,20 +118,10 @@ export function toClipboard(table: DataTable): string {
 /**
  * Generate XLSX blob from table data.
  *
- * Requires SheetJS (xlsx) library to be loaded.
- * Returns null if SheetJS is not available.
- *
  * @param table - The data table to export
- * @returns Blob containing XLSX data, or null if SheetJS unavailable
+ * @returns Blob containing XLSX data, or null on error
  */
 export function toXLSX(table: DataTable): Blob | null {
-  // Check if SheetJS is available
-  const XLSX = (window as unknown as { XLSX?: XLSXLibrary }).XLSX;
-  if (!XLSX) {
-    console.warn('[Yoink] SheetJS (XLSX) library not loaded');
-    return null;
-  }
-
   try {
     // Build worksheet data
     const wsData: string[][] = [];
@@ -160,16 +151,6 @@ export function toXLSX(table: DataTable): Blob | null {
     console.error('[Yoink] XLSX generation failed:', error);
     return null;
   }
-}
-
-// SheetJS type definitions (minimal)
-interface XLSXLibrary {
-  utils: {
-    aoa_to_sheet: (data: string[][]) => unknown;
-    book_new: () => unknown;
-    book_append_sheet: (wb: unknown, ws: unknown, name: string) => void;
-  };
-  write: (wb: unknown, opts: { bookType: string; type: string }) => ArrayBuffer;
 }
 
 // ============================================================================

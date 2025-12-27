@@ -14,22 +14,27 @@
             <button class="yoink-btn yoink-btn-primary" id="btn-manual-select">Manual Select</button>
           </div>
           <div class="yoink-control-row">
-            <button class="yoink-btn yoink-btn-secondary" disabled>Locate Next Button</button>
-            <button class="yoink-btn yoink-btn-primary" disabled>Start Crawling</button>
+            <button class="yoink-btn yoink-btn-secondary" id="btn-locate-next">Locate Next Button</button>
+            <button class="yoink-btn yoink-btn-primary" id="btn-start-crawl">Start Crawling</button>
           </div>
           <label class="yoink-checkbox">
-            <input type="checkbox" disabled />
+            <input type="checkbox" id="chk-infinite-scroll" />
             <span>Infinite Scroll</span>
           </label>
           <div class="yoink-delay-inputs">
             <div class="yoink-delay-row">
+              <span>Max Pages</span>
+              <input type="number" value="10" min="1" max="100" id="input-max-pages" />
+              <span>pages</span>
+            </div>
+            <div class="yoink-delay-row">
               <span>Min Delay</span>
-              <input type="number" value="1" min="0" disabled />
+              <input type="number" value="1" min="0" id="input-min-delay" />
               <span>sec</span>
             </div>
             <div class="yoink-delay-row">
               <span>Max Delay</span>
-              <input type="number" value="20" min="0" disabled />
+              <input type="number" value="20" min="0" id="input-max-delay" />
               <span>sec</span>
             </div>
           </div>
@@ -43,10 +48,27 @@
       </div>
     </section>
 
+    <!-- Crawl Progress (hidden by default) -->
+    <section class="yoink-crawl-progress" id="crawl-progress" style="display: none;">
+      <div class="yoink-progress-info">
+        <span id="crawl-status">Crawling...</span>
+        <span id="crawl-stats">Page 1 | 0 rows</span>
+      </div>
+      <button class="yoink-btn yoink-btn-warning" id="btn-stop-crawl">Stop Crawling</button>
+    </section>
+
     <!-- Action Row -->
     <section class="yoink-action-row">
-      <button class="yoink-btn yoink-btn-ai" disabled>✨ CLEAN WITH AI</button>
+      <button class="yoink-btn yoink-btn-ai" id="btn-ai-clean">✨ CLEAN WITH AI</button>
       <button class="yoink-btn yoink-btn-export" id="btn-html">📄 Download Full Page HTML</button>
+    </section>
+
+    <!-- AI Smart Extract Section -->
+    <section class="yoink-smart-extract">
+      <div class="yoink-smart-extract-row">
+        <input type="text" id="input-ai-prompt" class="yoink-ai-prompt-input" placeholder="Describe what to extract: 'titles, prices, ratings'..." />
+        <button class="yoink-btn yoink-btn-ai yoink-btn-smart" id="btn-smart-extract">Smart Extract</button>
+      </div>
     </section>
 
     <!-- Data Table -->

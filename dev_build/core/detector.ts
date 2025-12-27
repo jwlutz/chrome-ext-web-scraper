@@ -395,7 +395,102 @@ const SITE_PATTERNS = [
   { selector: '[data-job-id]', minCount: 3 },
   // Real estate
   { selector: '[data-zpid]', minCount: 3 },
+  // Hacker News
+  { selector: '.athing', minCount: 3 },
+  // Reddit
+  { selector: '[data-testid="post-container"]', minCount: 3 },
+  { selector: '.thing.link', minCount: 3 },
 ];
+
+// ============================================================================
+// NATIVE HTML TABLE DETECTION
+// ============================================================================
+
+/**
+ * Detect native HTML tables on the page.
+ * Returns patterns for table rows that contain data (not just headers).
+ */
+function detectHTMLTables(root: Element): DetectedPattern[] {
+  const patterns: DetectedPattern[] = [];
+  const tables = root.querySelectorAll('table');
+
+  for (const table of tables) {
+    // Skip tiny tables (likely layout tables)
+    const rect = table.getBoundingClientRect();
+    if (rect.width < 200 || rect.height < 100) continue;
+
+    // Skip tables inside nav/header/footer
+    if (table.closest('nav, header, footer, aside')) continue;
+
+    // Find data rows (tbody tr or direct tr, excluding header rows)
+    const tbody = table.querySelector('tbody') || table;
+    const allRows = Array.from(tbody.querySelectorAll(':scope > tr'));
+
+    // Filter out header rows and empty rows
+    const dataRows = allRows.filter(row => {
+      // Skip if it's in thead
+      if (row.closest('thead')) return false;
+      // Skip if it only has th elements
+      const cells = row.querySelectorAll('td, th');
+      const hasTd = row.querySelector('td') !== null;
+      // Must have at least 2 cells and at least one td
+      return cells.length >= 2 && hasTd;
+    });
+
+    if (dataRows.length >= 3) {
+      // Calculate data density score
+      let totalCells = 0;
+      let filledCells = 0;
+
+      for (const row of dataRows.slice(0, 10)) {
+        const cells = row.querySelectorAll('td');
+        totalCells += cells.length;
+        for (const cell of cells) {
+          const text = cell.textContent?.trim() || '';
+          if (text.length > 0) filledCells++;
+        }
+      }
+
+      const density = totalCells > 0 ? filledCells / totalCells : 0;
+
+      // Only include tables with good data density
+      if (density >= 0.3) {
+        // Generate a unique selector for this table's rows
+        let tableSelector = 'table';
+        if (table.id) {
+          tableSelector = `#${CSS.escape(table.id)}`;
+        } else if (table.className) {
+          const classes = getStableClasses(table);
+          if (classes.length > 0) {
+            tableSelector = `table.${CSS.escape(classes[0])}`;
+          }
+        }
+
+        // Check if there's a caption or preceding header
+        const caption = table.querySelector('caption')?.textContent?.trim();
+        const sampleTexts = dataRows.slice(0, 3).map(row => {
+          const cells = Array.from(row.querySelectorAll('td'));
+          return cells.slice(0, 3).map(c => c.textContent?.trim().slice(0, 20) || '').join(' | ');
+        });
+
+        const selector = `${tableSelector} tbody tr`;
+
+        // Don't add duplicate selectors
+        if (!patterns.some(p => p.selector === selector)) {
+          patterns.push({
+            id: `table-${++patternIdCounter}`,
+            selector,
+            count: dataRows.length,
+            sampleText: caption ? [caption, ...sampleTexts.slice(0, 2)] : sampleTexts,
+            confidence: Math.min(1, 0.7 + density * 0.3), // High confidence for data tables
+          });
+        }
+      }
+    }
+  }
+
+  return patterns;
+}
 
 // ============================================================================
 // MAIN API
@@ -411,6 +506,10 @@ let patternIdCounter = 0;
  */
 export function detectPatterns(root: Element = document.body): DetectedPattern[] {
   const patterns: DetectedPattern[] = [];
+
+  // Strategy 0: Detect native HTML tables first (Wikipedia, data tables, etc.)
+  const tablePatterns = detectHTMLTables(root);
+  patterns.push(...tablePatterns);
 
   // Strategy 1: Check site-specific patterns first
   for (const pattern of SITE_PATTERNS) {

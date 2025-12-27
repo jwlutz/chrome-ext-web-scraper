@@ -283,6 +283,46 @@ function extractStructuredText(element: Element): Record<string, string> {
 }
 
 // ============================================================================
+// TABLE ROW EXTRACTION
+// ============================================================================
+
+/**
+ * Check if an element is a table row.
+ */
+function isTableRow(element: Element): boolean {
+  return element.tagName.toLowerCase() === 'tr';
+}
+
+/**
+ * Extract data from a table row, treating each cell as a column.
+ * This provides much better extraction for native HTML tables.
+ */
+function extractFromTableRow(row: Element): ExtractedRow {
+  const cells = Array.from(row.querySelectorAll('td, th'));
+
+  // Build structured text from each cell
+  const structuredText: Record<string, string> = {};
+  const cellTexts: string[] = [];
+
+  cells.forEach((cell, index) => {
+    const text = normalizeWhitespace((cell as HTMLElement).innerText || cell.textContent || '');
+    cellTexts.push(text);
+    structuredText[`col_${index}`] = text;
+  });
+
+  // Join cell texts for the main text field
+  const text = cellTexts.join(' \t ');
+
+  return {
+    text,
+    links: extractLinks(row),
+    images: extractImages(row),
+    dataAttributes: extractDataAttributes(row),
+    structuredText,
+  };
+}
+
+// ============================================================================
 // MAIN API
 // ============================================================================
 
@@ -293,6 +333,11 @@ function extractStructuredText(element: Element): Record<string, string> {
  * @returns Extracted row data
  */
 export function extractFromElement(element: Element): ExtractedRow {
+  // Special handling for table rows - extract each cell as a column
+  if (isTableRow(element)) {
+    return extractFromTableRow(element);
+  }
+
   return {
     text: extractText(element),
     links: extractLinks(element),
@@ -337,6 +382,61 @@ export function extractChildTexts(element: Element): string[] {
   }
 
   return texts;
+}
+
+/**
+ * Extract table headers from an HTML table.
+ * Looks for th elements in thead, or first row if it contains th elements.
+ *
+ * @param selector - The selector used to find table rows
+ * @returns Array of header names, or empty array if no headers found
+ */
+export function extractTableHeaders(selector: string): string[] {
+  // Only works for table row selectors
+  if (!selector.includes('tbody tr') && !selector.includes('table tr')) {
+    return [];
+  }
+
+  // Find the table from the selector
+  const tableSelector = selector.replace(/\s*tbody\s*tr.*$/, '').replace(/\s*tr.*$/, '');
+
+  try {
+    const table = document.querySelector(tableSelector) as HTMLTableElement;
+    if (!table) return [];
+
+    const headers: string[] = [];
+
+    // Try thead first
+    const thead = table.querySelector('thead');
+    if (thead) {
+      const headerRow = thead.querySelector('tr');
+      if (headerRow) {
+        const ths = headerRow.querySelectorAll('th');
+        ths.forEach((th) => {
+          const text = normalizeWhitespace((th as HTMLElement).innerText || th.textContent || '');
+          headers.push(text || `Column ${headers.length + 1}`);
+        });
+      }
+    }
+
+    // If no thead, check first row for th elements
+    if (headers.length === 0) {
+      const firstRow = table.querySelector('tr');
+      if (firstRow) {
+        const ths = firstRow.querySelectorAll('th');
+        if (ths.length > 0) {
+          ths.forEach((th) => {
+            const text = normalizeWhitespace((th as HTMLElement).innerText || th.textContent || '');
+            headers.push(text || `Column ${headers.length + 1}`);
+          });
+        }
+      }
+    }
+
+    return headers;
+  } catch {
+    return [];
+  }
 }
 
 /**
