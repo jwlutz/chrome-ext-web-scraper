@@ -1,0 +1,17 @@
+{
+  "name": "yoink-dev-build",
+  "version": "0.1.0",
+  "description": "Yoink.ai Chrome extension - development build",
+  "type": "module",
+  "scripts": {
+    "dev": "vite build --watch",
+    "build": "vite build",
+    "clean": "rimraf dist"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.0.287",
+    "rimraf": "^6.0.1",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.6"
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(rm:*)",
+      "Bash(test:*)",
+      "Bash(npm run build:*)",
+      "Bash(git check-ignore:*)",
+      "Bash(npm run clean:*)",
+      "Bash(mkdir:*)",
+      "Bash(npm init:*)",
+      "Bash(npm install:*)",
+      "Bash(node collect-fixtures.js:*)",
+      "Bash(sort:*)",
+      "Bash(npm uninstall:*)",
+      "Bash(npm test:*)",
+      "Bash(node:*)",
+      "Bash(dir:*)",
+      "Bash(npx tsc:*)",
+      "Bash(findstr:*)",
+      "Bash(powershell -Command:*)",
+      "Bash(git init:*)"
+    ]
+  }
+}

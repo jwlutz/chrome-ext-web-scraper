@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Yoink.ai</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <h1>Yoink.ai</h1>
+      <div id="status" class="status status-loading">Connecting...</div>
+    </header>
+
+    <main class="main">
+      <!-- Phase 1: Basic layout shell -->
+      <section class="controls">
+        <div class="control-row">
+          <button class="btn btn-primary" disabled>Try Another Table</button>
+          <button class="btn btn-primary" disabled>Manual Select</button>
+        </div>
+        <div class="control-row">
+          <button class="btn btn-secondary" disabled>Locate Next Btn</button>
+          <button class="btn btn-primary" disabled>Start Crawling</button>
+        </div>
+      </section>
+
+      <section class="export-buttons">
+        <button class="btn btn-export" disabled>CSV</button>
+        <button class="btn btn-export" disabled>XLSX</button>
+        <button class="btn btn-export" disabled>JSON</button>
+        <button class="btn btn-export" disabled>COPY ALL</button>
+      </section>
+
+      <section class="table-container">
+        <div class="empty-state">
+          Click 'Try Another Table' or 'Manual Select' to begin
+        </div>
+      </section>
+
+      <footer class="footer">
+        <span id="row-count">No data loaded</span>
+      </footer>
+    </main>
+  </div>
+
+  <script type="module" src="popup.js"></script>
+</body>
+</html>
