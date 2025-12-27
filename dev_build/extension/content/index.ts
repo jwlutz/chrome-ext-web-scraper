@@ -10,6 +10,16 @@ import { detectPatterns, getElementsByPattern, cyclePattern } from '../../core/d
 import { extractFromElements } from '../../core/extractor';
 import { buildTable } from '../../core/table-builder';
 import { enableSelectionMode, findSimilarElements, generateSelector } from '../../core/selector';
+import {
+  toCSV,
+  toJSON,
+  toXLSX,
+  toClipboard,
+  capturePageHTML,
+  downloadFile,
+  copyToClipboard,
+  generateFilename,
+} from '../../core/exporter';
 import type { DetectedPattern, DataTable } from '../../core/types';
 
 console.log('[Yoink] Content script loaded:', location.href);
@@ -361,6 +371,32 @@ function wireUpButtons(): void {
       toggleManualSelection();
     });
   }
+
+  // Export buttons
+  const csvBtn = shadowRoot.querySelector('#btn-csv');
+  if (csvBtn) {
+    csvBtn.addEventListener('click', () => exportCSV());
+  }
+
+  const jsonBtn = shadowRoot.querySelector('#btn-json');
+  if (jsonBtn) {
+    jsonBtn.addEventListener('click', () => exportJSON());
+  }
+
+  const xlsxBtn = shadowRoot.querySelector('#btn-xlsx');
+  if (xlsxBtn) {
+    xlsxBtn.addEventListener('click', () => exportXLSX());
+  }
+
+  const copyBtn = shadowRoot.querySelector('#btn-copy');
+  if (copyBtn) {
+    copyBtn.addEventListener('click', () => exportClipboard());
+  }
+
+  const htmlBtn = shadowRoot.querySelector('#btn-html');
+  if (htmlBtn) {
+    htmlBtn.addEventListener('click', () => exportHTML());
+  }
 }
 
 // ============================================================================
@@ -501,5 +537,112 @@ function updateManualSelectButton(selecting: boolean): void {
     btn.textContent = 'Manual Select';
     btn.classList.remove('yoink-btn-warning');
     btn.classList.add('yoink-btn-primary');
+  }
+}
+
+// ============================================================================
+// EXPORT FUNCTIONS
+// ============================================================================
+
+/**
+ * Export current table as CSV.
+ */
+function exportCSV(): void {
+  if (!currentTable) {
+    showToast('No data to export');
+    return;
+  }
+
+  const csv = toCSV(currentTable);
+  const filename = generateFilename('csv', currentTable.sourceUrl);
+  downloadFile(csv, filename, 'text/csv');
+  showToast(`Downloaded ${filename}`);
+}
+
+/**
+ * Export current table as JSON.
+ */
+function exportJSON(): void {
+  if (!currentTable) {
+    showToast('No data to export');
+    return;
+  }
+
+  const json = toJSON(currentTable);
+  const filename = generateFilename('json', currentTable.sourceUrl);
+  downloadFile(json, filename, 'application/json');
+  showToast(`Downloaded ${filename}`);
+}
+
+/**
+ * Export current table as XLSX.
+ */
+function exportXLSX(): void {
+  if (!currentTable) {
+    showToast('No data to export');
+    return;
+  }
+
+  const blob = toXLSX(currentTable);
+  if (!blob) {
+    showToast('XLSX export requires SheetJS library');
+    return;
+  }
+
+  const filename = generateFilename('xlsx', currentTable.sourceUrl);
+  downloadFile(blob, filename);
+  showToast(`Downloaded ${filename}`);
+}
+
+/**
+ * Copy current table to clipboard as TSV.
+ */
+async function exportClipboard(): Promise<void> {
+  if (!currentTable) {
+    showToast('No data to copy');
+    return;
+  }
+
+  const tsv = toClipboard(currentTable);
+  await copyToClipboard(tsv);
+  showToast(`Copied ${currentTable.totalRows} rows to clipboard`);
+}
+
+/**
+ * Export full page HTML.
+ */
+function exportHTML(): void {
+  const html = capturePageHTML();
+  const filename = generateFilename('html', location.href);
+  downloadFile(html, filename, 'text/html');
+  showToast(`Downloaded ${filename}`);
+}
+
+/**
+ * Show a toast notification in the modal.
+ */
+function showToast(message: string): void {
+  if (!shadowRoot) return;
+
+  // Remove any existing toast
+  const existingToast = shadowRoot.querySelector('.yoink-toast');
+  if (existingToast) {
+    existingToast.remove();
+  }
+
+  // Create toast element
+  const toast = document.createElement('div');
+  toast.className = 'yoink-toast';
+  toast.textContent = message;
+
+  // Add to modal
+  const modal = shadowRoot.querySelector('.yoink-modal');
+  if (modal) {
+    modal.appendChild(toast);
+
+    // Auto-remove after 2 seconds
+    setTimeout(() => {
+      toast.remove();
+    }, 2000);
   }
 }
