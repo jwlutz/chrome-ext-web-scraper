@@ -1,3 +1,6 @@
+# Old code (reference only)
+src/
+
 # Dependencies
 node_modules/
 **/node_modules/
