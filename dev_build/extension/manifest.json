@@ -3,6 +3,7 @@
   "name": "Yoink.ai",
   "version": "0.1.0",
   "description": "Extract structured data from any webpage into spreadsheets",
+  "homepage_url": "https://chromewebstore.google.com/detail/yoinkai/afmmfhkdbnebcpidjfgjpkblmocpmbmm",
   "permissions": [
     "activeTab",
     "storage"
@@ -30,5 +31,9 @@
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
-  }
+  },
+  "host_permissions": [
+    "<all_urls>",
+    "https://api.anthropic.com/*"
+  ]
 }
